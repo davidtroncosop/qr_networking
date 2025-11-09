@@ -443,3 +443,132 @@ eventRoutes.post('/:eventId/register', requireAuth, async (c) => {
     }, 500);
   }
 });
+
+// POST /api/events/:eventId/quick-register - Quick register without auth
+eventRoutes.post('/:eventId/quick-register', async (c) => {
+  try {
+    const eventId = c.req.param('eventId');
+    const data = await c.req.json();
+    
+    // Validate required fields
+    if (!data.name || !data.email) {
+      return c.json({
+        success: false,
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'Name and email are required'
+        }
+      }, 400);
+    }
+    
+    // Check if event exists and is active
+    const event = await c.env.DB.prepare(`
+      SELECT * FROM events WHERE id = ? AND is_active = 1
+    `).bind(eventId).first();
+    
+    if (!event) {
+      return c.json({
+        success: false,
+        error: {
+          code: 'EVENT_NOT_FOUND',
+          message: 'Event not found or inactive'
+        }
+      }, 404);
+    }
+    
+    // Check if user already exists by email
+    let user = await c.env.DB.prepare(`
+      SELECT * FROM users WHERE email = ?
+    `).bind(data.email).first();
+    
+    const now = Date.now();
+    
+    if (!user) {
+      // Create new user
+      const userId = generateUUID();
+      
+      await c.env.DB.prepare(`
+        INSERT INTO users (
+          id, email, name, job_title, company, phone,
+          linkedin_url, twitter_url, instagram_url, website_url,
+          default_role, auth_provider, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'attendee', 'guest', ?, ?)
+      `).bind(
+        userId,
+        data.email,
+        data.name,
+        data.jobTitle || null,
+        data.company || null,
+        data.phone || null,
+        data.linkedinUrl || null,
+        data.twitterUrl || null,
+        data.instagramUrl || null,
+        data.websiteUrl || null,
+        now,
+        now
+      ).run();
+      
+      // Add interests if provided
+      if (data.interests && Array.isArray(data.interests)) {
+        for (const interest of data.interests) {
+          const interestId = generateUUID();
+          await c.env.DB.prepare(`
+            INSERT INTO user_interests (id, user_id, interest, created_at)
+            VALUES (?, ?, ?, ?)
+          `).bind(interestId, userId, interest, now).run();
+        }
+      }
+      
+      user = { id: userId, email: data.email, name: data.name };
+    }
+    
+    // Check if already registered
+    const existingRegistration = await c.env.DB.prepare(`
+      SELECT * FROM event_registrations WHERE event_id = ? AND user_id = ?
+    `).bind(eventId, user.id).first();
+    
+    if (!existingRegistration) {
+      // Register user to event
+      const registrationId = generateUUID();
+      
+      await c.env.DB.prepare(`
+        INSERT INTO event_registrations (id, event_id, user_id, role, registered_at)
+        VALUES (?, ?, ?, 'attendee', ?)
+      `).bind(registrationId, eventId, user.id, now).run();
+    }
+    
+    // Get user interests
+    const interestsResult = await c.env.DB.prepare(`
+      SELECT interest FROM user_interests WHERE user_id = ?
+    `).bind(user.id).all();
+    
+    const interests = interestsResult.results?.map((r: any) => r.interest) || [];
+    
+    return c.json({
+      success: true,
+      message: 'Successfully registered to event',
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          interests
+        },
+        event: {
+          id: event.id,
+          name: event.name
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in quick register:', error);
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to register'
+      }
+    }, 500);
+  }
+});

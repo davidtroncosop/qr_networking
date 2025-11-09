@@ -30,14 +30,17 @@ export function EventDetailPage() {
       if (eventResponse.success && eventResponse.data) {
         setEvent(eventResponse.data.event);
         
-        // Generate QR code
-        if (eventResponse.data.event.qrCodeUrl) {
-          const qr = await QRCode.toDataURL(eventResponse.data.event.qrCodeUrl, {
-            width: 300,
-            margin: 2,
-          });
-          setQrCodeUrl(qr);
-        }
+        // Generate QR code with the registration URL
+        const registrationUrl = `https://qr-networking.pages.dev/event/${eventId}/register`;
+        const qr = await QRCode.toDataURL(registrationUrl, {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: '#1f2937',
+            light: '#ffffff'
+          }
+        });
+        setQrCodeUrl(qr);
       }
       
       // Load attendees
@@ -233,10 +236,9 @@ export function EventDetailPage() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        if (event.qrCodeUrl) {
-                          navigator.clipboard.writeText(event.qrCodeUrl);
-                          alert('URL copiada al portapapeles');
-                        }
+                        const registrationUrl = `https://qr-networking.pages.dev/event/${eventId}/register`;
+                        navigator.clipboard.writeText(registrationUrl);
+                        alert('URL copiada al portapapeles');
                       }}
                     >
                       📋 Copiar URL

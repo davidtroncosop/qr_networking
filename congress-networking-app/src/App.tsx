@@ -12,6 +12,7 @@ import { ProfileSetupPage } from './pages/ProfileSetupPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CreateEventPage } from './pages/CreateEventPage';
 import { EventDetailPage } from './pages/EventDetailPage';
+import { QuickRegisterPage } from './pages/QuickRegisterPage';
 
 function App() {
   return (
@@ -22,6 +23,9 @@ function App() {
             <Route path={ROUTES.HOME} element={<HomePage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/verify" element={<VerifyMagicLinkPage />} />
+            
+            {/* Public routes - Quick register for attendees */}
+            <Route path="/event/:eventId/register" element={<QuickRegisterPage />} />
             
             {/* Protected routes */}
             <Route 
