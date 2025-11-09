@@ -572,3 +572,84 @@ eventRoutes.post('/:eventId/quick-register', async (c) => {
     }, 500);
   }
 });
+
+// POST /api/events/simple-create - Create event without auth (for testing)
+eventRoutes.post('/simple-create', async (c) => {
+  try {
+    const data = await c.req.json();
+    
+    // Validate required fields
+    if (!data.name || !data.organizerName || !data.organizerEmail) {
+      return c.json({
+        success: false,
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'Name, organizer name and email are required'
+        }
+      }, 400);
+    }
+    
+    const now = Date.now();
+    
+    // Create or get organizer user
+    let organizer = await c.env.DB.prepare(`
+      SELECT * FROM users WHERE email = ?
+    `).bind(data.organizerEmail).first();
+    
+    if (!organizer) {
+      const organizerId = generateUUID();
+      await c.env.DB.prepare(`
+        INSERT INTO users (
+          id, email, name, default_role, auth_provider, created_at, updated_at
+        ) VALUES (?, ?, ?, 'organizer', 'guest', ?, ?)
+      `).bind(organizerId, data.organizerEmail, data.organizerName, now, now).run();
+      
+      organizer = { id: organizerId };
+    }
+    
+    // Create event
+    const eventId = generateUUID();
+    const startDate = data.startDate ? new Date(data.startDate).getTime() : now;
+    const endDate = data.endDate ? new Date(data.endDate).getTime() : now + (24 * 60 * 60 * 1000);
+    
+    await c.env.DB.prepare(`
+      INSERT INTO events (
+        id, name, description, start_date, end_date, location,
+        organizer_id, is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    `).bind(
+      eventId,
+      data.name,
+      data.description || null,
+      startDate,
+      endDate,
+      data.location || null,
+      organizer.id,
+      now,
+      now
+    ).run();
+    
+    return c.json({
+      success: true,
+      message: 'Event created successfully',
+      data: {
+        event: {
+          id: eventId,
+          name: data.name,
+          startDate,
+          endDate
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error creating simple event:', error);
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to create event'
+      }
+    }, 500);
+  }
+});

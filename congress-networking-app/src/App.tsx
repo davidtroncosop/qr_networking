@@ -13,6 +13,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { CreateEventPage } from './pages/CreateEventPage';
 import { EventDetailPage } from './pages/EventDetailPage';
 import { QuickRegisterPage } from './pages/QuickRegisterPage';
+import { SimpleCreateEventPage } from './pages/SimpleCreateEventPage';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
             
             {/* Public routes - Quick register for attendees */}
             <Route path="/event/:eventId/register" element={<QuickRegisterPage />} />
+            <Route path="/create-event" element={<SimpleCreateEventPage />} />
             
             {/* Protected routes */}
             <Route 
