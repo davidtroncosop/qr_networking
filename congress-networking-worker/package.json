@@ -1,0 +1,17 @@
+{
+  "name": "congress-networking-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker API for Congress Networking App",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --platform=neutral --target=es2022"
+  },
+  "dependencies": {
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240000.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
+  }
+}
